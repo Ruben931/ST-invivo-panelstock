@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>INVIVO - Panel de Gestion Avancé</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="assets/logo-invivo-compact.png">
+    <link rel="shortcut icon" type="image/png" href="assets/logo-invivo-compact.png">
+    <link rel="apple-touch-icon" href="assets/logo-invivo-compact.png">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="styles.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        'invivo': {
+                            50: '#f0f9ff',
+                            100: '#e0f4fe',
+                            200: '#bae6fd',
+                            300: '#7dd3fc',
+                            400: '#38bdf8',
+                            500: '#04a4dc',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                            800: '#075985',
+                            900: '#0c4a6e',
+                            950: '#263684'
+                        }
+                    },
+                    animation: {
+                        'slide-in-right': 'slideInRight 0.3s ease-out',
+                        'slide-in-left': 'slideInLeft 0.3s ease-out',
+                        'scale-in': 'scaleIn 0.2s ease-out',
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'float': 'float 6s ease-in-out infinite',
+                        'glow': 'glow 2s ease-in-out infinite alternate'
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 transition-colors duration-300" x-data="app()" x-init="init()">
+    
+    <!-- Loading Screen -->
+    <div x-show="isLoading" x-transition class="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-invivo-500 to-invivo-950">
+        <div class="text-center">
+            <div class="relative mb-8">
+                <div class="w-20 h-20 border-4 border-white/30 border-t-white rounded-full animate-spin mb-4"></div>
+                <div class="absolute inset-0 w-20 h-20 border-4 border-transparent border-t-invivo-200 rounded-full animate-ping"></div>
+            </div>
+            <h2 class="text-2xl font-bold text-white mb-2">Chargement Panel INVIVO</h2>
+            <p class="text-white/80 text-lg font-medium">Initialisation en cours...</p>
+        </div>
+    </div>
+
+    <div class="flex h-screen overflow-hidden">
+        
+        <!-- Sidebar -->
+        <div :class="sidebarOpen ? 'w-64' : 'w-20'" class="bg-white dark:bg-gray-800 shadow-xl transition-all duration-300 flex flex-col border-r border-gray-200 dark:border-gray-700">
+            
+            <!-- Header Sidebar -->
+            <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+                <div class="flex items-center justify-between">
+                    <!-- Logo étendu (sidebar ouverte) -->
+                    <div x-show="sidebarOpen" x-transition class="flex items-center justify-center">
+                        <img src="assets/logo-invivo-full.png" 
+                             alt="Logo INVIVO" 
+                             class="h-16 w-auto object-contain">
+                    </div>
+                    <!-- Logo compact (sidebar fermée) -->
+                    <div x-show="!sidebarOpen" class="flex justify-center w-full">
+                        <img src="assets/logo-invivo-compact.png" 
+                             alt="Logo INVIVO Compact" 
+                             class="h-10 w-10 object-contain rounded-lg">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation -->
+            <nav class="flex-1 p-4 space-y-2">
+                <template x-for="(tab, key) in tabs" :key="key">
+                    <button @click="setActiveTab(key)" 
+                            :class="activeTab === key ? 'bg-gradient-to-r from-invivo-500 to-invivo-600 text-white shadow-lg scale-105' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'"
+                            class="w-full flex items-center p-3 rounded-xl transition-all duration-200 group relative overflow-hidden"
+                            x-data="{ hover: false }" @mouseenter="hover = true" @mouseleave="hover = false">
+                        
+                        <div :class="activeTab === key ? 'text-white' : 'text-invivo-500 group-hover:text-invivo-600'" 
+                             class="flex-shrink-0 w-6 transition-colors duration-200">
+                            <i :class="tab.icon" class="text-lg"></i>
+                        </div>
+                        
+                        <div x-show="sidebarOpen" x-transition class="ml-3 flex-1 text-left">
+                            <div class="font-medium text-sm" x-text="tab.label"></div>
+                            <div x-show="tab.badge" class="text-xs opacity-75" x-text="tab.description"></div>
+                        </div>
+                        
+                        <div x-show="sidebarOpen && tab.badge" 
+                             :class="activeTab === key ? 'bg-white text-invivo-600' : 'bg-invivo-100 text-invivo-600'"
+                             class="px-2 py-1 rounded-full text-xs font-medium ml-2" 
+                             x-text="tab.badge"></div>
+                        
+                        <!-- Hover effect -->
+                        <div x-show="hover && activeTab !== key" 
+                             class="absolute inset-0 bg-gradient-to-r from-invivo-500/10 to-invivo-600/10 rounded-xl"></div>
+                    </button>
+                </template>
+            </nav>
+
+            <!-- Footer Sidebar -->
+            <div class="p-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
+                <!-- Dark Mode Toggle -->
+                <button @click="toggleDarkMode()" 
+                        class="w-full flex items-center p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors duration-200">
+                    <div class="w-6">
+                        <i x-show="!darkMode" class="fas fa-moon"></i>
+                        <i x-show="darkMode" class="fas fa-sun text-yellow-500"></i>
+                    </div>
+                    <span x-show="sidebarOpen" x-transition class="ml-3 text-sm" x-text="darkMode ? 'Mode Clair' : 'Mode Sombre'"></span>
+                </button>
+                
+                <!-- Sidebar Toggle -->
+                <button @click="sidebarOpen = !sidebarOpen" 
+                        class="w-full flex items-center p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors duration-200">
+                    <div class="w-6">
+                        <i :class="sidebarOpen ? 'fas fa-chevron-left' : 'fas fa-chevron-right'"></i>
+                    </div>
+                    <span x-show="sidebarOpen" x-transition class="ml-3 text-sm">Réduire</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            
+            <!-- Header -->
+            <header class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <div>
+                            <h2 class="text-2xl font-bold text-gray-900 dark:text-white" x-text="tabs[activeTab]?.title || 'Dashboard'"></h2>
+                            <p class="text-sm text-gray-500 dark:text-gray-400" x-text="tabs[activeTab]?.subtitle || 'Gestion centralisée'"></p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center space-x-4">
+                        <!-- Search -->
+                        <div class="relative">
+                            <input type="text" x-model="searchQuery" @input="handleSearch()"
+                                   placeholder="Rechercher..." 
+                                   class="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-invivo-500 focus:border-transparent">
+                            <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                        </div>
+                        
+                        <!-- Notifications -->
+                        <div class="relative" x-data="{ open: false }">
+                            <button @click="open = !open" class="relative p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors duration-200">
+                                <i class="fas fa-bell text-lg"></i>
+                                <div class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
+                                    <span class="text-xs text-white font-medium" x-text="notifications.length"></span>
+                                </div>
+                            </button>
+                            
+                            <div x-show="open" @click.away="open = false" x-transition 
+                                 class="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 z-50">
+                                <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+                                    <h3 class="font-semibold text-gray-900 dark:text-white">Notifications</h3>
+                                </div>
+                                <div class="max-h-64 overflow-y-auto">
+                                    <template x-for="notification in notifications" :key="notification.id">
+                                        <div class="p-4 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200">
+                                            <div class="flex items-start space-x-3">
+                                                <div :class="notification.type === 'success' ? 'bg-green-100 text-green-600' : 
+                                                            notification.type === 'warning' ? 'bg-yellow-100 text-yellow-600' : 
+                                                            'bg-blue-100 text-blue-600'" 
+                                                     class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0">
+                                                    <i :class="notification.icon" class="text-sm"></i>
+                                                </div>
+                                                <div class="flex-1">
+                                                    <p class="text-sm font-medium text-gray-900 dark:text-white" x-text="notification.title"></p>
+                                                    <p class="text-xs text-gray-500 dark:text-gray-400" x-text="notification.message"></p>
+                                                    <p class="text-xs text-gray-400 dark:text-gray-500 mt-1" x-text="notification.time"></p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- User Profile -->
+                        <div class="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 cursor-pointer">
+                            <img src="https://ui-avatars.com/api/?name=Admin+INVIVO&background=04a4dc&color=fff" 
+                                 alt="Profile" class="w-8 h-8 rounded-full">
+                            <div class="hidden md:block">
+                                <p class="text-sm font-medium text-gray-900 dark:text-white">Admin INVIVO</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">Administrateur</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Content Area -->
+            <main class="flex-1 overflow-auto p-6 bg-gray-50 dark:bg-gray-900">
+                
+                <!-- Dashboard Tab -->
+                <div x-show="activeTab === 'dashboard'" x-transition class="space-y-6">
+                    
+                    <!-- Stats Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <template x-for="(stat, index) in stats" :key="index">
+                            <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300 group cursor-pointer border border-gray-200 dark:border-gray-700"
+                                 @mouseenter="stat.animated = true">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-600 dark:text-gray-400" x-text="stat.label"></p>
+                                        <p class="text-3xl font-bold text-gray-900 dark:text-white mt-2" x-text="stat.value"></p>
+                                        <div class="flex items-center mt-2">
+                                            <span :class="stat.change > 0 ? 'text-green-600' : 'text-red-600'" 
+                                                  class="text-sm font-medium flex items-center">
+                                                <i :class="stat.change > 0 ? 'fas fa-arrow-up' : 'fas fa-arrow-down'" class="mr-1"></i>
+                                                <span x-text="Math.abs(stat.change) + '%'"></span>
+                                            </span>
+                                            <span class="text-sm text-gray-500 dark:text-gray-400 ml-2">vs. mois dernier</span>
+                                        </div>
+                                    </div>
+                                    <div :class="stat.color" 
+                                         class="w-16 h-16 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                                        <i :class="stat.icon" class="text-2xl text-white"></i>
+                                    </div>
+                                </div>
+                                
+                                <!-- Mini Chart -->
+                                <div class="mt-4 h-12">
+                                    <canvas :id="'chart-' + index" class="w-full h-full"></canvas>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+
+                    <!-- Charts Row -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        
+                        <!-- Demand Chart -->
+                        <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+                            <div class="flex items-center justify-between mb-6">
+                                <div>
+                                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Demande</h3>
+                                    <p class="text-sm text-gray-500 dark:text-gray-400">Par entrepôt</p>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <button class="px-3 py-1 text-xs rounded-full bg-invivo-100 text-invivo-600 font-medium">Articles</button>
+                                    <button class="px-3 py-1 text-xs rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">Valeur</button>
+                                    <button class="px-3 py-1 text-xs rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">Taux</button>
+                                </div>
+                            </div>
+                            <div class="h-64">
+                                <canvas id="revenueChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Stock Distribution -->
+                        <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+                            <div class="flex items-center justify-between mb-6">
+                                <div>
+                                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Répartition des Stocks</h3>
+                                    <p class="text-sm text-gray-500 dark:text-gray-400">Par localisation</p>
+                                </div>
+                                <button class="text-invivo-600 hover:text-invivo-700 text-sm font-medium">Voir tout</button>
+                            </div>
+                            <div class="h-64">
+                                <canvas id="stockChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Activity -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        
+                        <!-- Activity Feed -->
+                        <div class="lg:col-span-2 bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+                            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-6">Activité Récente</h3>
+                            <div class="space-y-4">
+                                <template x-for="activity in recentActivity" :key="activity.id">
+                                    <div class="flex items-start space-x-4 p-4 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200">
+                                        <div :class="activity.color" class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0">
+                                            <i :class="activity.icon" class="text-white text-sm"></i>
+                                        </div>
+                                        <div class="flex-1">
+                                            <p class="text-sm font-medium text-gray-900 dark:text-white" x-text="activity.title"></p>
+                                            <p class="text-xs text-gray-500 dark:text-gray-400" x-text="activity.description"></p>
+                                            <p class="text-xs text-gray-400 dark:text-gray-500 mt-1" x-text="activity.time"></p>
+                                        </div>
+                                        <button class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                                            <i class="fas fa-ellipsis-h"></i>
+                                        </button>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+
+                        <!-- Quick Stats -->
+                        <div class="space-y-6">
+                            <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+                                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Actions Rapides</h3>
+                                <div class="space-y-3">
+                                    <button @click="setActiveTab('stocks')" class="w-full flex items-center p-3 text-left rounded-xl hover:bg-invivo-50 dark:hover:bg-invivo-900/20 transition-colors duration-200 group">
+                                        <div class="w-10 h-10 bg-gradient-to-br from-invivo-500 to-invivo-600 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
+                                            <i class="fas fa-boxes text-white text-sm"></i>
+                                        </div>
+                                        <div>
+                                            <p class="font-medium text-gray-900 dark:text-white">Gérer Stocks</p>
+                                            <p class="text-xs text-gray-500 dark:text-gray-400">Inventaires</p>
+                                        </div>
+                                    </button>
+                                    <button @click="setActiveTab('salons')" class="w-full flex items-center p-3 text-left rounded-xl hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors duration-200 group">
+                                        <div class="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
+                                            <i class="fas fa-calendar-plus text-white text-sm"></i>
+                                        </div>
+                                        <div>
+                                            <p class="font-medium text-gray-900 dark:text-white">Nouveau Salon</p>
+                                            <p class="text-xs text-gray-500 dark:text-gray-400">Événements</p>
+                                        </div>
+                                    </button>
+                                    <button @click="setActiveTab('transport')" class="w-full flex items-center p-3 text-left rounded-xl hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors duration-200 group">
+                                        <div class="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-200">
+                                            <i class="fas fa-truck text-white text-sm"></i>
+                                        </div>
+                                        <div>
+                                            <p class="font-medium text-gray-900 dark:text-white">Planifier Transport</p>
+                                            <p class="text-xs text-gray-500 dark:text-gray-400">Logistique</p>
+                                        </div>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Sync Configuration -->
+                            <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+                                <div class="flex items-center justify-between mb-4">
+                                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Synchronisation Excel</h3>
+                                    <div class="flex items-center space-x-2">
+                                        <div class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                                        <span class="text-xs text-green-600 dark:text-green-400 font-medium">Bidirectionnelle</span>
+                                    </div>
+                                </div>
+
+                                <div class="space-y-4">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center space-x-3">
+                                            <div class="w-8 h-8 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
+                                                <i class="fas fa-exchange-alt text-green-600 text-sm"></i>
+                                            </div>
+                                            <div>
+                                                <p class="font-medium text-gray-900 dark:text-white">Sync Bidirectionnelle</p>
+                                                <p class="text-xs text-gray-500 dark:text-gray-400">Site ↔ Excel en temps réel</p>
+                                            </div>
+                                        </div>
+                                        <div class="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                                            <i class="fas fa-check text-white text-xs"></i>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center space-x-3">
+                                            <div class="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                                                <i class="fab fa-google text-blue-600 text-sm"></i>
+                                            </div>
+                                            <div>
+                                                <p class="font-medium text-gray-900 dark:text-white">Google Sheets</p>
+                                                <p class="text-xs text-gray-500 dark:text-gray-400">Sync cloud temps réel</p>
+                                            </div>
+                                        </div>
+                                        <button @click="openSyncConfig('google')" class="px-3 py-1 bg-blue-500 text-white text-xs rounded-lg hover:bg-blue-600 transition-colors">
+                                            Configurer
+                                        </button>
+                                    </div>
+                                    
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center space-x-3">
+                                            <div class="w-8 h-8 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center">
+                                                <i class="fab fa-microsoft text-orange-600 text-sm"></i>
+                                            </div>
+                                            <div>
+                                                <p class="font-medium text-gray-900 dark:text-white">Excel Online</p>
+                                                <p class="text-xs text-gray-500 dark:text-gray-400">Microsoft 365 sync</p>
+                                            </div>
+                                        </div>
+                                        <button @click="openSyncConfig('excel')" class="px-3 py-1 bg-orange-500 text-white text-xs rounded-lg hover:bg-orange-600 transition-colors">
+                                            Configurer
+                                        </button>
+                                    </div>
+
+
+                                </div>
+                                
+                                <div class="mt-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                                    <div class="grid grid-cols-2 gap-4 text-sm">
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-600 dark:text-gray-400">Dernière sync:</span>
+                                            <span class="text-gray-900 dark:text-white font-medium" x-text="lastSyncTime || 'Jamais'"></span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-600 dark:text-gray-400">Direction:</span>
+                                            <span class="text-green-600 dark:text-green-400 font-medium">↕ Bidirectionnelle</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Ajouts Rapides -->
+                            <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+                                <div class="flex items-center justify-between mb-4">
+                                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Ajouts Rapides</h3>
+                                    <div class="flex items-center space-x-2">
+                                        <div class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                                        <span class="text-xs text-green-600 dark:text-green-400 font-medium">1 clic</span>
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-1 gap-3">
+                                    <div class="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl p-4 border border-blue-200 dark:border-blue-600">
+                                        <div class="flex items-center space-x-3">
+                                            <div class="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center">
+                                                <i class="fas fa-tools text-white text-lg"></i>
+                                            </div>
+                                            <div class="flex-1">
+                                                <p class="font-semibold text-gray-900 dark:text-white">🔧 Outils</p>
+                                                <p class="text-xs text-gray-600 dark:text-gray-400">Perceuses, visseuses, niveau laser, clés...</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-xl p-4 border border-green-200 dark:border-green-600">
+                                        <div class="flex items-center space-x-3">
+                                            <div class="w-10 h-10 bg-green-500 rounded-xl flex items-center justify-center">
+                                                <i class="fas fa-cubes text-white text-lg"></i>
+                                            </div>
+                                            <div class="flex-1">
+                                                <p class="font-semibold text-gray-900 dark:text-white">🧱 Matériaux</p>
+                                                <p class="text-xs text-gray-600 dark:text-gray-400">Béton, bois, fer, PVC, ciment, gravier...</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="bg-gradient-to-r from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 rounded-xl p-4 border border-orange-200 dark:border-orange-600">
+                                        <div class="flex items-center space-x-3">
+                                            <div class="w-10 h-10 bg-orange-500 rounded-xl flex items-center justify-center">
+                                                <i class="fas fa-cogs text-white text-lg"></i>
+                                            </div>
+                                            <div class="flex-1">
+                                                <p class="font-semibold text-gray-900 dark:text-white">⚙️ Équipements</p>
+                                                <p class="text-xs text-gray-600 dark:text-gray-400">Casques, gants, lunettes, harnais...</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mt-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                                    <p class="text-xs text-gray-600 dark:text-gray-400">
+                                        <i class="fas fa-info-circle mr-1"></i>
+                                        Stocks → Cliquez sur un entrepôt → Ajout Rapide
+                                    </p>
+                                </div>
+                            </div>
+
+
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stocks Tab -->
+                <div x-show="activeTab === 'stocks'" x-transition class="space-y-6">
+                    
+                    <!-- Header with filters -->
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+                        <div>
+                            <h3 class="text-xl font-semibold text-gray-900 dark:text-white">Gestion des Stocks</h3>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">Gérez vos inventaires par localisation</p>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <select class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
+                                <option>Tous les sites (8)</option>
+                                <option>Sites actifs (7)</option>
+                                <option>Site vide (1)</option>
+                                <option>Par spécialité</option>
+                            </select>
+                            <button class="px-4 py-2 bg-invivo-500 text-white rounded-lg hover:bg-invivo-600 transition-colors duration-200 flex items-center">
+                                <i class="fas fa-plus mr-2"></i>
+                                Nouveau Site
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Stock Cards Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <template x-for="(stock, index) in stockLocations" :key="index">
+                            <div @click="openStockDetails(stock)" 
+                                 class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer border border-gray-200 dark:border-gray-700 group">
+                                
+                                <!-- Header -->
+                                <div class="flex items-center justify-between mb-4">
+                                    <div class="flex items-center space-x-3">
+                                        <div :class="stock.status === 'active' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-600'" 
+                                             class="w-12 h-12 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                                            <i class="fas fa-warehouse text-lg"></i>
+                                        </div>
+                                        <div>
+                                            <h4 class="font-semibold text-gray-900 dark:text-white" x-text="stock.name"></h4>
+                                            <span :class="stock.status === 'active' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'" 
+                                                  class="text-xs px-2 py-1 rounded-full font-medium" 
+                                                  x-text="stock.status === 'active' ? 'Actif' : 'Vide'"></span>
+                                        </div>
+                                    </div>
+                                    <button class="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                                        <i class="fas fa-ellipsis-v text-gray-400"></i>
+                                    </button>
+                                </div>
+
+                                <!-- Stats -->
+                                <div class="grid grid-cols-2 gap-4 mb-4">
+                                    <div class="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-xl">
+                                        <p class="text-2xl font-bold text-gray-900 dark:text-white" x-text="stock.articles"></p>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400">Articles</p>
+                                    </div>
+                                    <div class="text-center p-3 bg-gray-50 dark:bg-gray-700 rounded-xl">
+                                        <p class="text-2xl font-bold text-gray-900 dark:text-white" x-text="'€' + (stock.value / 1000).toFixed(1) + 'K'"></p>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400">Valeur</p>
+                                    </div>
+                                </div>
+
+                                <!-- Progress Bar -->
+                                <div class="mb-4">
+                                    <div class="flex justify-between text-sm mb-2">
+                                        <span class="text-gray-600 dark:text-gray-400">Utilisation</span>
+                                        <span class="text-gray-900 dark:text-white font-medium" x-text="Math.round((stock.articles / 500) * 100) + '%'"></span>
+                                    </div>
+                                    <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                                        <div class="bg-gradient-to-r from-invivo-500 to-invivo-600 h-2 rounded-full transition-all duration-500"
+                                             :style="'width: ' + Math.min((stock.articles / 500) * 100, 100) + '%'"></div>
+                                    </div>
+                                </div>
+
+                                <!-- Categories -->
+                                <div class="space-y-2">
+                                    <template x-for="category in stock.categories.slice(0, 2)" :key="category.name">
+                                        <div class="flex items-center justify-between text-sm">
+                                            <span class="text-gray-600 dark:text-gray-400" x-text="category.name"></span>
+                                            <span class="font-medium text-gray-900 dark:text-white" x-text="category.count"></span>
+                                        </div>
+                                    </template>
+                                    <div x-show="stock.categories.length > 2" class="text-xs text-gray-500 dark:text-gray-400">
+                                        <span x-text="'+' + (stock.categories.length - 2) + ' autres catégories'"></span>
+                                    </div>
+                                </div>
+
+                                <!-- Action Button -->
+                                <button class="w-full mt-4 py-2 px-4 bg-invivo-500 text-white rounded-lg hover:bg-invivo-600 transition-colors duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                    <i class="fas fa-eye mr-2"></i>
+                                    Voir Détails
+                                </button>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Other tabs content would continue... -->
+                
+            </main>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="app-advanced.js"></script>
+</body>
+</html> 

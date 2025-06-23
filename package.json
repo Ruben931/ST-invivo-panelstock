@@ -1,0 +1,30 @@
+{
+  "name": "invivo-panel",
+  "version": "1.0.0",
+  "description": "Panel de Gestion INVIVO - Secteur BTP avec synchronisation Excel bidirectionnelle",
+  "main": "index.html",
+  "scripts": {
+    "dev": "python -m http.server 8000",
+    "start": "python -m http.server 8000",
+    "build": "echo 'No build step required for static site'"
+  },
+  "keywords": [
+    "invivo",
+    "panel",
+    "stock",
+    "management",
+    "excel",
+    "btp",
+    "construction"
+  ],
+  "author": "INVIVO",
+  "license": "MIT",
+  "homepage": "https://github.com/ruben931/ST-invivo-panelstock#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ruben931/ST-invivo-panelstock.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ruben931/ST-invivo-panelstock/issues"
+  }
+} 
