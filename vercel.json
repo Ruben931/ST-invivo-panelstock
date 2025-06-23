@@ -1,16 +1,12 @@
 {
   "version": 2,
   "name": "invivo-panel",
-  "builds": [
+  "buildCommand": "",
+  "outputDirectory": "./",
+  "rewrites": [
     {
-      "src": "index.html",
-      "use": "@vercel/static"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ],
   "headers": [
